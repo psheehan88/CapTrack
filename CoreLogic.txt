@@ -1,0 +1,44 @@
+// Load Excel file into table
+IF xlsOpen("myData.xlsx") = False THEN
+   Error("Unable to open Excel file")
+   RETURN
+END
+
+// Read target column for measurements
+arrMeasurements is array of real
+FOR i = 2 TO xlsNbRow() // Skip header
+   value is string = xlsData(i, 3) // Column C, for example
+   IF IsNumeric(value) AND NoSpace(value) <> "" THEN
+      Add(arrMeasurements, StringToReal(value))
+   END
+END
+
+// Compute statistics
+mu is real = Average(arrMeasurements)
+sigma is real = StatStandardDeviation(arrMeasurements)
+minVal is real = Min(arrMeasurements)
+maxVal is real = Max(arrMeasurements)
+
+// Specification limits (hardcoded or user-defined)
+LSL is real = 4.0
+USL is real = 6.0
+
+// Capability indices
+Cp is real = (USL - LSL) / (6 * sigma)
+Cpk is real = Min((USL - mu), (mu - LSL)) / (3 * sigma)
+
+// Display results
+Info("Cp: " + Cp + "  |  Cpk: " + Cpk)
+
+// Draw histogram and normal curve
+CHART_Histogram..Source = arrMeasurements
+CHART_Histogram..Type = chartColumn
+CHART_Histogram..Title = "Capability Histogram"
+
+// Overlay normal distribution (optional)
+nSteps is int = 50
+FOR j = 1 TO nSteps
+   x is real = minVal + ((maxVal - minVal) * j / nSteps)
+   y is real = (1 / (sigma * Sqrt(2*PI))) * Exp(-Pow((x - mu), 2) / (2 * Pow(sigma, 2)))
+   ChartAddSeries(CHART_Histogram, "NormalDist", x, y)
+END
